@@ -7,8 +7,10 @@ import (
 
 	"github.com/cjlapao/common-go/helper"
 	"github.com/cjlapao/common-go/version"
+	"github.com/cjlapao/github-templater/pkg/context"
 	"github.com/cjlapao/github-templater/pkg/provision"
-	golangcilinter "github.com/cjlapao/github-templater/pkg/provisioners/golangci_linter"
+	"github.com/cjlapao/github-templater/pkg/provisioners/github"
+	"github.com/cjlapao/github-templater/pkg/provisioners/golangci_linter"
 	"github.com/cjlapao/github-templater/pkg/provisioners/makefile"
 )
 
@@ -37,10 +39,18 @@ func main() {
 }
 
 func Init() {
+	ctx := context.Get()
 	p := provision.New()
-	p.Add(golangcilinter.GolangCILinterProvisioner{})
+	p.Add(github.GitHubProvisioner{})
+	p.Add(golangci_linter.GolangCILinterProvisioner{})
 	p.Add(makefile.MakeFileProvisioner{})
-	p.Provision()
+	if diag := p.Provision(); diag.HasErrors() {
+		for _, err := range diag.Errors() {
+			ctx.LogError(err.Error())
+		}
+		ctx.LogError("There was an error in the providers")
+		os.Exit(1)
+	}
 }
 
 func SetVersion(ver string) *version.Version {

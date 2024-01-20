@@ -1,31 +1,36 @@
 package makefile
 
 import (
-	"time"
-
+	"github.com/cjlapao/github-templater/pkg/config"
 	"github.com/cjlapao/github-templater/pkg/constants"
 	"github.com/cjlapao/github-templater/pkg/context"
+	"github.com/cjlapao/github-templater/pkg/diagnostics"
 	"github.com/cjlapao/github-templater/pkg/interfaces"
 )
 
 type MakeFileProvisioner struct {
-	id        string
-	name      string
-	languages []string
-	ctx       context.ProvisionerContext
-	config    interfaces.ProvisionerConfig
+	id          string
+	name        string
+	languages   []string
+	ctx         *context.ProvisionerContext
+	cfg         *config.Config
+	diagnostics *diagnostics.Diagnostics
+	config      interfaces.ProvisionerConfig
 }
 
-func New(ctx context.ProvisionerContext, config interfaces.ProvisionerConfig) *MakeFileProvisioner {
+func New(ctx context.ProvisionerContext, providerConfig interfaces.ProvisionerConfig) *MakeFileProvisioner {
 	result := &MakeFileProvisioner{
 		id:        "31264948-5ec7-4d7f-abe3-fc7ec7f70344",
 		name:      "makefile",
-		ctx:       ctx,
+		ctx:       &ctx,
+		cfg:       config.Get(),
 		languages: []string{"all"},
-		config:    config,
+		config:    providerConfig,
 	}
 
 	result.ctx.WithValue(constants.ContextResourceName, result.name)
+	diagnostics := diagnostics.NewModuleDiagnostics(result.name)
+	result.diagnostics = &diagnostics
 
 	return result
 }
@@ -43,7 +48,7 @@ func (p MakeFileProvisioner) ID() string {
 	return p.id
 }
 
-func (p MakeFileProvisioner) Context() context.ProvisionerContext {
+func (p MakeFileProvisioner) Context() *context.ProvisionerContext {
 	return p.ctx
 }
 
@@ -51,9 +56,9 @@ func (p MakeFileProvisioner) Languages() []string {
 	return p.languages
 }
 
-func (p MakeFileProvisioner) Provision() error {
+func (p MakeFileProvisioner) Provision() diagnostics.Diagnostics {
 	p.ctx.LogInfo("Provisioning Makefile")
-	time.Sleep(5 * time.Second)
+	// p.cfg.RequestFromUser("IAMGROOT", "Yep Everything is fine from Makefile")
 	p.ctx.LogInfo("Makefile provisioned")
-	return nil
+	return *p.diagnostics
 }

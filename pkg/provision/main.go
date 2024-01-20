@@ -2,14 +2,19 @@ package provision
 
 import (
 	"fmt"
-	"sync"
 
 	logger "github.com/cjlapao/common-go-logger"
 	"github.com/cjlapao/github-templater/pkg/config"
 	"github.com/cjlapao/github-templater/pkg/context"
+	"github.com/cjlapao/github-templater/pkg/diagnostics"
 	"github.com/cjlapao/github-templater/pkg/interfaces"
 	"github.com/pkg/errors"
 )
+
+var SupportedLanguages = []string{
+	"go",
+	"golang",
+}
 
 type ProvisionerService struct {
 	cfg          *config.Config
@@ -72,35 +77,36 @@ func (p *ProvisionerService) GetByLanguage(language string) []interfaces.Provisi
 	return result
 }
 
-func (p *ProvisionerService) Provision() error {
-	language := p.cfg.RequestFromUser("LANGUAGE", fmt.Sprintf("%v What language do you want to provision?", logger.IconBell))
+func (p *ProvisionerService) Provision() diagnostics.Diagnostics {
+	diag := diagnostics.NewModuleDiagnostics("provisioner")
+	language := p.cfg.RequestFromUser("LANGUAGE", fmt.Sprintf("%v What language do you want to provision?", logger.IconBell), "")
 	if language == "" {
-		return errors.New("No language provided")
+		diag.AddError(errors.New("No language provided"))
+		return diag
+	}
+	if !p.isLanguageSupported(language) {
+		msg := fmt.Sprintf("Language %v is not supported", language)
+		diag.AddError(errors.New(msg))
+		p.ctx.LogError(msg)
+		return diag
 	}
 
 	p.ctx.LogInfo("Provisioning for language %v", language)
 	availableProvisioners := p.GetByLanguage(language)
 	if len(availableProvisioners) == 0 {
 		p.ctx.LogError("No provisioners found for language %v", language)
-		return nil
+		diag.AddInfo(fmt.Sprintf("No provisioners found for language %v", language))
+		return diag
 	}
 
-	wg := sync.WaitGroup{}
 	for _, provisioner := range availableProvisioners {
-		wg.Add(1)
-		go func(provisioner interfaces.Provisioner) {
-			base := provisioner.New(*p.ctx, p.config)
-			err := base.Provision()
-			if err != nil {
-				fmt.Println(err.Error())
-			}
-			wg.Done()
-		}(provisioner)
+		base := provisioner.New(*p.ctx, p.config)
+		if provisionerDiag := base.Provision(); provisionerDiag.HasErrors() {
+			diag.Append(provisionerDiag)
+		}
 	}
 
-	wg.Wait()
-
-	return nil
+	return diag
 }
 
 func (p *ProvisionerService) getConfig() interfaces.ProvisionerConfig {
@@ -110,4 +116,14 @@ func (p *ProvisionerService) getConfig() interfaces.ProvisionerConfig {
 		options.WorkingDirectory = "."
 	}
 	return options
+}
+
+func (p *ProvisionerService) isLanguageSupported(language string) bool {
+	for _, lang := range SupportedLanguages {
+		if lang == language {
+			return true
+		}
+	}
+
+	return false
 }
