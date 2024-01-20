@@ -5,9 +5,9 @@ import (
 	"sync"
 
 	logger "github.com/cjlapao/common-go-logger"
-	"github.com/cjlapao/github-templater/config"
-	"github.com/cjlapao/github-templater/context"
-	"github.com/cjlapao/github-templater/interfaces"
+	"github.com/cjlapao/github-templater/pkg/config"
+	"github.com/cjlapao/github-templater/pkg/context"
+	"github.com/cjlapao/github-templater/pkg/interfaces"
 	"github.com/pkg/errors"
 )
 

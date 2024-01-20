@@ -3,9 +3,9 @@ package makefile
 import (
 	"time"
 
-	"github.com/cjlapao/github-templater/constants"
-	"github.com/cjlapao/github-templater/context"
-	"github.com/cjlapao/github-templater/interfaces"
+	"github.com/cjlapao/github-templater/pkg/constants"
+	"github.com/cjlapao/github-templater/pkg/context"
+	"github.com/cjlapao/github-templater/pkg/interfaces"
 )
 
 type MakeFileProvisioner struct {

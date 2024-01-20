@@ -1,7 +1,7 @@
 package interfaces
 
 import (
-	provisioner_context "github.com/cjlapao/github-templater/context"
+	provisioner_context "github.com/cjlapao/github-templater/pkg/context"
 )
 
 type Provisioner interface {

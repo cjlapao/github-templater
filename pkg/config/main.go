@@ -9,8 +9,8 @@ import (
 
 	log "github.com/cjlapao/common-go-logger"
 	"github.com/cjlapao/common-go/helper"
-	"github.com/cjlapao/github-templater/constants"
-	"github.com/cjlapao/github-templater/context"
+	"github.com/cjlapao/github-templater/pkg/constants"
+	"github.com/cjlapao/github-templater/pkg/context"
 	"gopkg.in/yaml.v3"
 )
 

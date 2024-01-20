@@ -4,7 +4,7 @@ import (
 	"context"
 
 	logger "github.com/cjlapao/common-go-logger"
-	"github.com/cjlapao/github-templater/constants"
+	"github.com/cjlapao/github-templater/pkg/constants"
 )
 
 var globalContext *ProvisionerContext
