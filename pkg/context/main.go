@@ -22,7 +22,7 @@ func NewWithContext(ctx context.Context) *ProvisionerContext {
 		logger:    logger.Get(),
 	}
 
-	result.logger.EnableTimestamp(true)
+	result.logger.EnableTimestamp(false)
 	return result
 }
 
@@ -77,6 +77,12 @@ func (p *ProvisionerContext) Logger() *logger.LoggerService {
 func (p *ProvisionerContext) LogError(format string, words ...interface{}) {
 	if p.shouldLog {
 		p.logger.Error(p.getLoggerFormattedMessage(format), words...)
+	}
+}
+
+func (p *ProvisionerContext) LogWarn(format string, words ...interface{}) {
+	if p.shouldLog {
+		p.logger.Warn(p.getLoggerFormattedMessage(format), words...)
 	}
 }
 

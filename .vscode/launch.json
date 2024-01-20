@@ -7,6 +7,7 @@
       "request": "launch",
       "console": "internalConsole",
       "mode": "debug",
+      "cwd": "${workspaceFolder}",
       "program": "${workspaceFolder}/cmd/github-templater/main.go",
       // Comment out if you do not need to setup environment variables for the module
       "envFile": "${workspaceFolder}/.env",

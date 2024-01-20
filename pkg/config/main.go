@@ -26,10 +26,9 @@ var extensions = []string{
 }
 
 type Config struct {
-	ctx                 *context.ProvisionerContext
-	mode                string
-	includeOwnResources bool
-	config              map[string]string
+	ctx    *context.ProvisionerContext
+	mode   string
+	config map[string]string
 }
 
 func New(ctx *context.ProvisionerContext) *Config {
@@ -58,7 +57,6 @@ func (c *Config) Load() bool {
 		if _, err := os.Stat(configFileName); !os.IsNotExist(err) {
 			fileName = configFileName
 		}
-
 	} else {
 		for _, extension := range extensions {
 			if _, err := os.Stat(fmt.Sprintf("config%s", extension)); !os.IsNotExist(err) {
@@ -141,7 +139,7 @@ func (c *Config) GetKey(key string) string {
 		}
 	}
 
-	return value
+	return strings.TrimSpace(value)
 }
 
 func (c *Config) GetIntKey(key string) int {
@@ -172,7 +170,7 @@ func (c *Config) GetBoolKey(key string) bool {
 	return boolVal
 }
 
-func (c *Config) RequestFromUser(key string, question string) string {
+func (c *Config) RequestFromUser(key string, question string, defaultValue string) string {
 	value := c.GetKey(key)
 	if value != "" {
 		return value
@@ -180,5 +178,58 @@ func (c *Config) RequestFromUser(key string, question string) string {
 
 	fmt.Printf("%s: ", question)
 	fmt.Scanln(&value)
+	c.ctx.LogDebug("User input: %v", value)
+	if value == "" {
+		return defaultValue
+	}
+
 	return value
+}
+
+func (c *Config) RequestBoolFromUser(key string, question string, defaultValue bool) bool {
+	value := c.GetKey(key)
+	if value == "" {
+		fmt.Printf("%s: ", question)
+		fmt.Scanln(&value)
+		if value == "" {
+			c.ctx.LogDebug("User input: %v, could not convert it to bool", value)
+			return defaultValue
+		}
+	}
+
+	if strings.EqualFold(value, "y") || strings.EqualFold(value, "yes") {
+		value = "true"
+	} else if strings.EqualFold(value, "n") || strings.EqualFold(value, "no") {
+		value = "false"
+	}
+
+	boolVal, err := strconv.ParseBool(value)
+	if err != nil {
+		c.ctx.LogDebug("User input: %v, could not convert it to bool", value)
+		return defaultValue
+	}
+
+	c.ctx.LogDebug("User input: %v, we converted to %v", value, boolVal)
+	return boolVal
+}
+
+func (c *Config) RequestIntFromUser(key string, question string, defaultValue int) int {
+	value := c.GetKey(key)
+	if value == "" {
+		fmt.Printf("%s: ", question)
+		fmt.Scanln(&value)
+		if value == "" {
+			c.ctx.LogDebug("User input: %v, could not convert it to int", value)
+			return defaultValue
+		}
+	}
+
+	intVal, err := strconv.Atoi(value)
+	if err != nil {
+		c.ctx.LogDebug("User input: %v, could not convert it to int", value)
+		return defaultValue
+	}
+
+	c.ctx.LogDebug("User input: %v, we converted to %v", value, intVal)
+	return intVal
 }
