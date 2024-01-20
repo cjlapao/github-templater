@@ -4,10 +4,10 @@ labels: [bug]
 body:
 - type: markdown
   attributes:
-    value: &#39;**Please describe the bug**&#39;
+    value: **Please describe the bug**
 - type: textarea
   id: reproduce_steps
   attributes:
     label: Steps to reproduce
-    value: &#34;Steps to reproduce the behavior:\n\n      1. Go to &#39;...&#39; \n      2. Click on &#39;....&#39; \n      3. Scroll down to &#39;....&#39;\n      4. See error\n      &#34;
+    value: "Steps to reproduce the behavior:\n\n      1. Go to &#39;...&#39; \n      2. Click on &#39;....&#39; \n      3. Scroll down to &#39;....&#39;\n      4. See error\n      ";
 
