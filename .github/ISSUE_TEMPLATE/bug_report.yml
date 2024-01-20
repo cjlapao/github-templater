@@ -4,7 +4,7 @@ labels: [bug]
 body:
 - type: markdown
   attributes:
-    value: **Please describe the bug**
+    value: "**Please describe the bug**"
 - type: textarea
   id: reproduce_steps
   attributes:
