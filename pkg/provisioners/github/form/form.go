@@ -6,7 +6,7 @@ const (
 	GithubFormTypeTextArea GithubFormType = "textarea"
 	GithubFormTypeInput    GithubFormType = "input"
 	GithubFormTypeDropdown GithubFormType = "dropdown"
-	GithubFormTypeCheckbox GithubFormType = "checkbox"
+	GithubFormTypeCheckbox GithubFormType = "checkboxes"
 	GithubFormTypeMarkdown GithubFormType = "markdown"
 )
 

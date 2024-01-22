@@ -4,7 +4,6 @@ type TextAreaItem struct {
 	ItemType   GithubFormType         `json:"type" yaml:"type"`
 	ID         string                 `json:"id" yaml:"id"`
 	Attributes map[string]interface{} `json:"attributes,omitempty" yaml:"attributes,omitempty"`
-	Validators map[string]interface{} `json:"validators,omitempty" yaml:"validators,omitempty"`
 }
 
 func NewTextAreaItem(id string) TextAreaItem {
@@ -12,7 +11,6 @@ func NewTextAreaItem(id string) TextAreaItem {
 		ItemType:   GithubFormTypeTextArea,
 		ID:         id,
 		Attributes: map[string]interface{}{},
-		Validators: map[string]interface{}{},
 	}
 }
 

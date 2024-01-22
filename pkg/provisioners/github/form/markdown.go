@@ -3,14 +3,12 @@ package form
 type MarkdownItem struct {
 	ItemType   GithubFormType         `json:"type" yaml:"type"`
 	Attributes map[string]interface{} `json:"attributes,omitempty" yaml:"attributes,omitempty"`
-	Validators map[string]interface{} `json:"validators,omitempty" yaml:"validators,omitempty"`
 }
 
 func NewMarkdownItem() MarkdownItem {
 	return MarkdownItem{
 		ItemType:   GithubFormTypeMarkdown,
 		Attributes: map[string]interface{}{},
-		Validators: map[string]interface{}{},
 	}
 }
 

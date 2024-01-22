@@ -15,4 +15,33 @@ body:
         2. Click on '....'
         3. Scroll down to '....'
         4. See error
+- type: input
+  id: test_input
+  attributes:
+    label: Test Input
+    placeholder: something to put here
+  validations:
+    required: true
+- type: dropdown
+  id: dropdown_test
+  attributes:
+    default: 1
+    description: some description
+    label: Dropdown Test
+    options:
+        - Option A
+        - Option B
+        - Option C
+  validations:
+    required: true
+- type: checkboxes
+  id: checkbox_test
+  attributes:
+    description: some description
+    label: Checkbox Test
+    options:
+        - label: Option A
+          required: true
+        - label: Option B
+        - label: Option C
 
