@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"html/template"
 	"os"
 	"path"
+	"text/template"
 
 	_ "embed"
 
@@ -70,7 +70,7 @@ func (p *BugReportProcessor) Process() diagnostics.Diagnostics {
 	defaultConfig.Body.Items = append(defaultConfig.Body.Items, bugDescriptionItem)
 	reproduceStepsItem := form.NewTextAreaItem("reproduce_steps")
 	reproduceStepsItem.Label("Steps to reproduce")
-	// reproduceStepsItem.Value("")
+	reproduceStepsItem.Value("Steps to reproduce the behavior:\n1. Go to '...'\n2. Click on '....'\n3. Scroll down to '....'\n4. See error")
 	defaultConfig.Body.Items = append(defaultConfig.Body.Items, reproduceStepsItem)
 
 	filePath := path.Join(issueTemplateFolderPath, "bug_report.yml")

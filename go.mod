@@ -8,6 +8,8 @@ require (
 	github.com/pkg/errors v0.9.1
 )
 
+require gopkg.in/yaml.v2 v2.4.0 // indirect
+
 require (
 	// indirect
 	github.com/fatih/color v1.16.0 // indirect

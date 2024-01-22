@@ -3,23 +3,15 @@ package form
 type TextAreaItem struct {
 	ItemType   GithubFormType         `json:"type" yaml:"type"`
 	ID         string                 `json:"id" yaml:"id"`
-	Attributes map[string]string      `json:"attributes,omitempty" yaml:"attributes,omitempty"`
+	Attributes map[string]interface{} `json:"attributes,omitempty" yaml:"attributes,omitempty"`
 	Validators map[string]interface{} `json:"validators,omitempty" yaml:"validators,omitempty"`
 }
 
 func NewTextAreaItem(id string) TextAreaItem {
 	return TextAreaItem{
-		ItemType: GithubFormTypeTextArea,
-		ID:       id,
-		Attributes: map[string]string{
-			"value": `Steps to reproduce the behavior:
-
-      1. Go to '...' 
-      2. Click on '....' 
-      3. Scroll down to '....'
-      4. See error
-      `,
-		},
+		ItemType:   GithubFormTypeTextArea,
+		ID:         id,
+		Attributes: map[string]interface{}{},
 		Validators: map[string]interface{}{},
 	}
 }
