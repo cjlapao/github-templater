@@ -1,9 +1,0 @@
-name: {{ .Name | toLower }}
-{{- if .Description }}
-description: {{ .Description }}
-{{- end }}
-labels: [bug]
-{{- if .Body }}
-body:
-{{ .Body.Items | toYaml }}
-{{- end }}

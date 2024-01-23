@@ -18,10 +18,8 @@ import (
 	"github.com/cjlapao/github-templater/pkg/interfaces"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/constants"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/form"
+	github_template "github.com/cjlapao/github-templater/pkg/provisioners/github/template"
 )
-
-//go:embed bug_report.yml
-var defaultTemplate string
 
 var potentialFileNames = []string{
 	"bug_report.yml",
@@ -63,7 +61,8 @@ func (p *BugReportProcessor) Process() diagnostics.Diagnostics {
 		return *p.diagnostics
 	}
 
-	defaultConfig := NewBugReportConfig("Bug Report")
+	defaultConfig := github_template.NewIssueTemplateConfig("Bug Report")
+	defaultConfig.Labels = append(defaultConfig.Labels, "bug")
 	defaultConfig.Description = "Create a report to help us improve"
 	bugDescriptionItem := form.NewMarkdownItem()
 	bugDescriptionItem.Value("**Please describe the bug**")
@@ -72,33 +71,28 @@ func (p *BugReportProcessor) Process() diagnostics.Diagnostics {
 	reproduceStepsItem.Label("Steps to reproduce")
 	reproduceStepsItem.Value("Steps to reproduce the behavior:\n1. Go to '...'\n2. Click on '....'\n3. Scroll down to '....'\n4. See error")
 	defaultConfig.Body.Items = append(defaultConfig.Body.Items, reproduceStepsItem)
-	testInputItem := form.NewInputItem("test_input")
-	testInputItem.Label("Test Input")
-	testInputItem.Placeholder("something to put here")
-	testInputItem.IsRequired(true)
-	defaultConfig.Body.Items = append(defaultConfig.Body.Items, testInputItem)
-	dropdownTestItem := form.NewDropdownItem("dropdown_test")
-	dropdownTestItem.Label("Dropdown Test")
-	dropdownTestItem.Description("some description")
-	dropdownTestItem.AddOption("Option A")
-	dropdownTestItem.AddOption("Option B")
-	dropdownTestItem.AddOption("Option C")
-	dropdownTestItem.AddOption("Option A")
-	dropdownTestItem.IsRequired(true)
-	dropdownTestItem.Default(1)
-	defaultConfig.Body.Items = append(defaultConfig.Body.Items, dropdownTestItem)
-	checkboxTestItem := form.NewCheckboxItem("checkbox_test")
-	checkboxTestItem.Label("Checkbox Test")
-	checkboxTestItem.Description("some description")
-	checkboxTestItem.AddOption("Option A", true)
-	checkboxTestItem.AddOption("Option B", false)
-	checkboxTestItem.AddOption("Option C", false)
-	checkboxTestItem.AddOption("Option A", false)
-	checkboxTestItem.IsRequired(true)
-	defaultConfig.Body.Items = append(defaultConfig.Body.Items, checkboxTestItem)
+	versionItem := form.NewInputItem("version")
+	versionItem.Label("Version")
+	versionItem.Placeholder("e.g. v1.0.0")
+	defaultConfig.Body.Items = append(defaultConfig.Body.Items, versionItem)
+	expectedBehaviourItem := form.NewTextAreaItem("expected_behaviour")
+	expectedBehaviourItem.Label("Expected behavior")
+	expectedBehaviourItem.Value("A clear and concise description of what you expected to happen.")
+	defaultConfig.Body.Items = append(defaultConfig.Body.Items, expectedBehaviourItem)
+	actualBehaviourItem := form.NewTextAreaItem("actual_behaviour")
+	actualBehaviourItem.Label("Actual behavior")
+	actualBehaviourItem.Value("A clear and concise description of what actually happened.")
+	defaultConfig.Body.Items = append(defaultConfig.Body.Items, actualBehaviourItem)
+	screenshotsItem := form.NewMarkdownItem()
+	screenshotsItem.Value("**Screenshots**")
+	defaultConfig.Body.Items = append(defaultConfig.Body.Items, screenshotsItem)
+	additionalContextItem := form.NewTextAreaItem("additional_context")
+	additionalContextItem.Label("Additional context")
+	additionalContextItem.Value("Add any other context about the problem here.\n For example, if you are using a specific version of the language, or if you are using a specific operating system.")
+	defaultConfig.Body.Items = append(defaultConfig.Body.Items, additionalContextItem)
 
 	filePath := path.Join(issueTemplateFolderPath, "bug_report.yml")
-	tmpl, err := template.New("default").Funcs(helpers.FuncMap).Parse(defaultTemplate)
+	tmpl, err := template.New("default").Funcs(helpers.FuncMap).Parse(github_template.DefaultTemplate)
 	if err != nil {
 		p.diagnostics.AddError(err)
 		return *p.diagnostics
