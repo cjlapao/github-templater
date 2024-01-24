@@ -34,7 +34,7 @@ type BugReportProcessor struct {
 	cfg             *config.Config
 	ctx             *context.ProvisionerContext
 	config          interfaces.ProvisionerConfig
-	bugReportConfig *github_template.IssueFormTemplateConfig
+	bugReportConfig *github_template.IssueFormTemplate
 }
 
 func New(ctx *context.ProvisionerContext, provisionerConfig interfaces.ProvisionerConfig) *BugReportProcessor {
@@ -59,7 +59,7 @@ func (p *BugReportProcessor) ID() string {
 	return p.id
 }
 
-func (p *BugReportProcessor) SetConfig(config *github_template.IssueFormTemplateConfig) {
+func (p *BugReportProcessor) SetConfig(config *github_template.IssueFormTemplate) {
 	p.bugReportConfig = config
 }
 
@@ -127,7 +127,7 @@ func (p *BugReportProcessor) checkIfFileExists(folder string) error {
 	}
 
 	if fileExists {
-		override := p.cfg.RequestBoolFromUser("GITHUB_BUG_REPORT_FILE_EXIST", fmt.Sprintf("A bug report file \"%v\" already exists, do you want to override it? [y/n]", foundFile), false)
+		override := p.cfg.RequestBoolFromUser(constants.BugReportFileExistsEnvVar, fmt.Sprintf("A bug report file \"%v\" already exists, do you want to override it? [y/n]", foundFile), false)
 		if !override {
 			msg := fmt.Sprintf("A bug report file \"%v\" already exists, ignoring provisioner on request by user", foundFile)
 			p.ctx.LogWarn(msg)
@@ -144,8 +144,8 @@ func (p *BugReportProcessor) checkIfFileExists(folder string) error {
 	return nil
 }
 
-func (p *BugReportProcessor) generateDefault() *github_template.IssueFormTemplateConfig {
-	defaultConfig := github_template.NewIssueTemplateConfig("Bug Report")
+func (p *BugReportProcessor) generateDefault() *github_template.IssueFormTemplate {
+	defaultConfig := github_template.NewIssueTemplate("Bug Report")
 	defaultConfig.Labels = append(defaultConfig.Labels, "bug")
 	defaultConfig.Description = "Create a report to help us improve"
 	bugDescriptionItem := form.NewTextAreaItem("bug_description")

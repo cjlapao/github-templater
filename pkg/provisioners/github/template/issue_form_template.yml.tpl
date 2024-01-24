@@ -7,11 +7,11 @@ labels:
 {{ .Labels | toYaml }}
 {{- end }}
 {{- if and .Projects (gt (len .Projects) 0) }}
-labels:
+projects:
 {{ .Projects | toYaml }}
 {{- end }}
 {{- if and .Assignees (gt (len .Assignees) 0) }}
-labels:
+assignees:
 {{ .Assignees | toYaml }}
 {{- end }}
 {{- if .Body }}

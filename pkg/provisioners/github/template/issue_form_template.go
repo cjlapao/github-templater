@@ -11,7 +11,7 @@ import (
 //go:embed issue_form_template.yml.tpl
 var DefaultFormTemplate string
 
-type IssueFormTemplateConfig struct {
+type IssueFormTemplate struct {
 	Name        string          `json:"name" yaml:"name"`
 	Description string          `json:"description" yaml:"description"`
 	Labels      []string        `json:"labels" yaml:"labels"`
@@ -20,8 +20,8 @@ type IssueFormTemplateConfig struct {
 	Body        form.GithubForm `json:"body" yaml:"body"`
 }
 
-func NewIssueTemplateConfig(name string) *IssueFormTemplateConfig {
-	return &IssueFormTemplateConfig{
+func NewIssueTemplate(name string) *IssueFormTemplate {
+	return &IssueFormTemplate{
 		Name:        name,
 		Description: "",
 		Labels:      []string{},
@@ -31,7 +31,7 @@ func NewIssueTemplateConfig(name string) *IssueFormTemplateConfig {
 	}
 }
 
-func (i IssueFormTemplateConfig) Validate() diagnostics.Diagnostics {
+func (i IssueFormTemplate) Validate() diagnostics.Diagnostics {
 	diag := diagnostics.New()
 	if i.Name == "" {
 		diag.AddError(errors.New("name is required"))

@@ -34,7 +34,7 @@ type FeatureRequestProcessor struct {
 	cfg                  *config.Config
 	ctx                  *context.ProvisionerContext
 	config               interfaces.ProvisionerConfig
-	featureRequestConfig *github_template.IssueFormTemplateConfig
+	featureRequestConfig *github_template.IssueFormTemplate
 }
 
 func New(ctx *context.ProvisionerContext, provisionerConfig interfaces.ProvisionerConfig) *FeatureRequestProcessor {
@@ -51,7 +51,7 @@ func New(ctx *context.ProvisionerContext, provisionerConfig interfaces.Provision
 	return result
 }
 
-func (p *FeatureRequestProcessor) SetConfig(config *github_template.IssueFormTemplateConfig) {
+func (p *FeatureRequestProcessor) SetConfig(config *github_template.IssueFormTemplate) {
 	p.featureRequestConfig = config
 }
 
@@ -128,7 +128,7 @@ func (p *FeatureRequestProcessor) checkIfFileExists(folder string) error {
 	}
 
 	if fileExists {
-		override := p.cfg.RequestBoolFromUser("GITHUB_FEATURE_REQUEST_FILE_EXIST", fmt.Sprintf("A feature request file \"%v\" already exists, do you want to override it? [y/n]", foundFile), false)
+		override := p.cfg.RequestBoolFromUser(constants.FeatureRequestFileExistsEnvVar, fmt.Sprintf("A feature request file \"%v\" already exists, do you want to override it? [y/n]", foundFile), false)
 		if !override {
 			msg := fmt.Sprintf("A feature request file \"%v\" already exists, ignoring provisioner on request by user", foundFile)
 			p.ctx.LogWarn(msg)
@@ -145,8 +145,8 @@ func (p *FeatureRequestProcessor) checkIfFileExists(folder string) error {
 	return nil
 }
 
-func (p *FeatureRequestProcessor) generateDefault() *github_template.IssueFormTemplateConfig {
-	defaultConfig := github_template.NewIssueTemplateConfig("Feature Request")
+func (p *FeatureRequestProcessor) generateDefault() *github_template.IssueFormTemplate {
+	defaultConfig := github_template.NewIssueTemplate("Feature Request")
 	defaultConfig.Labels = append(defaultConfig.Labels, "triage", "feature request")
 	defaultConfig.Description = "Suggest an idea for this project"
 	featureDescriptionItem := form.NewTextAreaItem("feature_description")

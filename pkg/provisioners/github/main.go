@@ -13,6 +13,7 @@ import (
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/bug_report"
 	github_constants "github.com/cjlapao/github-templater/pkg/provisioners/github/constants"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/feature_request"
+	"github.com/cjlapao/github-templater/pkg/provisioners/github/issuer_template_config"
 )
 
 type GitHubProvisioner struct {
@@ -41,6 +42,7 @@ func New(ctx context.ProvisionerContext, providerConfig interfaces.ProvisionerCo
 	result.diagnostics = &diagnostics
 
 	result.processors = []interfaces.Processor{
+		issuer_template_config.New(&ctx, providerConfig),
 		bug_report.New(&ctx, providerConfig),
 		feature_request.New(&ctx, providerConfig),
 	}
@@ -88,6 +90,8 @@ func (p GitHubProvisioner) Provision() diagnostics.Diagnostics {
 			p.ctx.LogInfo("Processed %s", processor.Name())
 		}
 	}
+
+	// Generating the configuration file
 
 	p.ctx.LogInfo("GolangCI Linter provisioned")
 	return *p.diagnostics
