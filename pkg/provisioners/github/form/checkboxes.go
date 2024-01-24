@@ -1,21 +1,26 @@
 package form
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/cjlapao/github-templater/pkg/diagnostics"
+)
 
 type CheckboxItemOption struct {
 	Label    string `json:"label,omitempty" yaml:"label,omitempty"`
 	Required bool   `json:"required,omitempty" yaml:"required,omitempty"`
 }
 
-type CheckboxItem struct {
+type CheckboxesItem struct {
 	ItemType   GithubFormType         `json:"type" yaml:"type"`
 	ID         string                 `json:"id" yaml:"id"`
 	Attributes map[string]interface{} `json:"attributes,omitempty" yaml:"attributes,omitempty"`
 	Validators map[string]interface{} `json:"validations,omitempty" yaml:"validations,omitempty"`
 }
 
-func NewCheckboxItem(id string) CheckboxItem {
-	return CheckboxItem{
+func NewCheckboxItems(id string) CheckboxesItem {
+	return CheckboxesItem{
 		ItemType:   GithubFormTypeCheckbox,
 		ID:         id,
 		Attributes: map[string]interface{}{},
@@ -23,19 +28,19 @@ func NewCheckboxItem(id string) CheckboxItem {
 	}
 }
 
-func (i CheckboxItem) Type() GithubFormType {
+func (i CheckboxesItem) Type() GithubFormType {
 	return i.ItemType
 }
 
-func (i CheckboxItem) Label(v string) {
+func (i CheckboxesItem) Label(v string) {
 	i.Attributes["label"] = v
 }
 
-func (i CheckboxItem) Description(v string) {
+func (i CheckboxesItem) Description(v string) {
 	i.Attributes["description"] = v
 }
 
-func (i CheckboxItem) AddOption(v string, checked bool) {
+func (i CheckboxesItem) AddOption(v string, checked bool) {
 	item := CheckboxItemOption{
 		Label:    v,
 		Required: checked,
@@ -56,12 +61,32 @@ func (i CheckboxItem) AddOption(v string, checked bool) {
 	}
 }
 
-func (i CheckboxItem) IsRequired(v bool) {
+func (i CheckboxesItem) IsRequired(v bool) {
 }
 
-func (i CheckboxItem) ToMap() map[string]interface{} {
-	return map[string]interface{}{
-		"type":       i.ItemType,
-		"attributes": i.Attributes,
+func (i CheckboxesItem) Validate() diagnostics.Diagnostics {
+	diag := diagnostics.New()
+	if label, ok := i.Attributes["label"].(string); ok {
+		if label == "" {
+			diag.AddError(fmt.Errorf("checkboxes %v label is required", i.ID))
+		}
+	} else {
+		if i.Attributes["label"] == nil {
+			diag.AddError(fmt.Errorf("checkboxes %v label is required", i.ID))
+		} else {
+			diag.AddError(fmt.Errorf("checkboxes %v label is not a string", i.ID))
+		}
 	}
+
+	options := i.Attributes["options"].([]CheckboxItemOption)
+	if len(options) == 0 {
+		diag.AddError(fmt.Errorf("checkboxes %v options are required", i.ID))
+	}
+	for _, option := range options {
+		if option.Label == "" {
+			diag.AddError(fmt.Errorf("checkboxes %v option label is required", i.ID))
+		}
+	}
+
+	return diag
 }

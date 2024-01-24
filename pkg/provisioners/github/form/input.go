@@ -1,5 +1,11 @@
 package form
 
+import (
+	"fmt"
+
+	"github.com/cjlapao/github-templater/pkg/diagnostics"
+)
+
 type InputItem struct {
 	ItemType   GithubFormType         `json:"type" yaml:"type"`
 	ID         string                 `json:"id" yaml:"id"`
@@ -40,9 +46,19 @@ func (i InputItem) IsRequired(v bool) {
 	i.Validators["required"] = v
 }
 
-func (i InputItem) ToMap() map[string]interface{} {
-	return map[string]interface{}{
-		"type":       i.ItemType,
-		"attributes": i.Attributes,
+func (i InputItem) Validate() diagnostics.Diagnostics {
+	diag := diagnostics.New()
+	if label, ok := i.Attributes["label"].(string); ok {
+		if label == "" {
+			diag.AddError(fmt.Errorf("input %v label is required", i.ID))
+		}
+	} else {
+		if i.Attributes["label"] == nil {
+			diag.AddError(fmt.Errorf("input %v label is required", i.ID))
+		} else {
+			diag.AddError(fmt.Errorf("input %v label is not a string", i.ID))
+		}
 	}
+
+	return diag
 }

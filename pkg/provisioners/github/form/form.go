@@ -1,5 +1,7 @@
 package form
 
+import "github.com/cjlapao/github-templater/pkg/diagnostics"
+
 type GithubFormType string
 
 const (
@@ -20,8 +22,21 @@ func NewGithubForm() *GithubForm {
 	}
 }
 
+func (f *GithubForm) AddItem(item GithubFormItem) {
+	f.Items = append(f.Items, item)
+}
+
+func (f *GithubForm) Validate() diagnostics.Diagnostics {
+	diag := diagnostics.New()
+	for _, item := range f.Items {
+		diag.Append(item.Validate())
+	}
+
+	return diag
+}
+
 type GithubFormItem interface {
 	Type() GithubFormType
 	IsRequired(v bool)
-	ToMap() map[string]interface{}
+	Validate() diagnostics.Diagnostics
 }

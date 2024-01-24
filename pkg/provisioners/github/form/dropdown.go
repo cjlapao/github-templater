@@ -1,6 +1,11 @@
 package form
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/cjlapao/github-templater/pkg/diagnostics"
+)
 
 type DropdownItem struct {
 	ItemType   GithubFormType         `json:"type" yaml:"type"`
@@ -67,9 +72,24 @@ func (i DropdownItem) IsRequired(v bool) {
 	i.Validators["required"] = v
 }
 
-func (i DropdownItem) ToMap() map[string]interface{} {
-	return map[string]interface{}{
-		"type":       i.ItemType,
-		"attributes": i.Attributes,
+func (i DropdownItem) Validate() diagnostics.Diagnostics {
+	diag := diagnostics.New()
+	if label, ok := i.Attributes["label"].(string); ok {
+		if label == "" {
+			diag.AddError(fmt.Errorf("dropdown %v label is required", i.ID))
+		}
+	} else {
+		if i.Attributes["label"] == nil {
+			diag.AddError(fmt.Errorf("dropdown %v label is required", i.ID))
+		} else {
+			diag.AddError(fmt.Errorf("dropdown %v label is not a string", i.ID))
+		}
 	}
+
+	options := i.Attributes["options"].([]string)
+	if len(options) == 0 {
+		diag.AddError(fmt.Errorf("dropdown %v options are required", i.ID))
+	}
+
+	return diag
 }

@@ -4,8 +4,11 @@ labels:
 - bug
 
 body:
-- type: markdown
+- type: textarea
+  id: bug_description
   attributes:
+    label: Bug description
+    render: Markdown
     value: '**Please describe the bug**'
 - type: textarea
   id: reproduce_steps
@@ -18,32 +21,36 @@ body:
         3. Scroll down to '....'
         4. See error
 - type: input
-  id: test_input
+  id: version
   attributes:
-    label: Test Input
-    placeholder: something to put here
-  validations:
-    required: true
-- type: dropdown
-  id: dropdown_test
+    label: Version
+    placeholder: e.g. v1.0.0
+- type: textarea
+  id: expected_behaviour
   attributes:
-    default: 1
-    description: some description
-    label: Dropdown Test
-    options:
-        - Option A
-        - Option B
-        - Option C
-  validations:
-    required: true
+    label: Expected behavior
+    value: A clear and concise description of what you expected to happen.
+- type: textarea
+  id: actual_behaviour
+  attributes:
+    label: Actual behavior
+    value: A clear and concise description of what actually happened.
+- type: textarea
+  id: screenshots
+  attributes:
+    label: Screenshots
+- type: textarea
+  id: additional_context
+  attributes:
+    label: Additional context
+    value: |-
+        Add any other context about the problem here.
+         For example, if you are using a specific version of the language, or if you are using a specific operating system.
 - type: checkboxes
-  id: checkbox_test
+  id: validation
   attributes:
-    description: some description
-    label: Checkbox Test
+    label: Validation
     options:
-        - label: Option A
+        - label: Yes, I've included all of the above information (Version, settings, logs, etc.)
           required: true
-        - label: Option B
-        - label: Option C
 

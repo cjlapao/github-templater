@@ -64,7 +64,9 @@ func (p *BugReportProcessor) Process() diagnostics.Diagnostics {
 	defaultConfig := github_template.NewIssueTemplateConfig("Bug Report")
 	defaultConfig.Labels = append(defaultConfig.Labels, "bug")
 	defaultConfig.Description = "Create a report to help us improve"
-	bugDescriptionItem := form.NewMarkdownItem()
+	bugDescriptionItem := form.NewTextAreaItem("bug_description")
+	bugDescriptionItem.Label("Bug description")
+	bugDescriptionItem.Render("Markdown")
 	bugDescriptionItem.Value("**Please describe the bug**")
 	defaultConfig.Body.Items = append(defaultConfig.Body.Items, bugDescriptionItem)
 	reproduceStepsItem := form.NewTextAreaItem("reproduce_steps")
@@ -83,13 +85,24 @@ func (p *BugReportProcessor) Process() diagnostics.Diagnostics {
 	actualBehaviourItem.Label("Actual behavior")
 	actualBehaviourItem.Value("A clear and concise description of what actually happened.")
 	defaultConfig.Body.Items = append(defaultConfig.Body.Items, actualBehaviourItem)
-	screenshotsItem := form.NewMarkdownItem()
-	screenshotsItem.Value("**Screenshots**")
+	screenshotsItem := form.NewTextAreaItem("screenshots")
+	screenshotsItem.Label("Screenshots")
 	defaultConfig.Body.Items = append(defaultConfig.Body.Items, screenshotsItem)
 	additionalContextItem := form.NewTextAreaItem("additional_context")
 	additionalContextItem.Label("Additional context")
 	additionalContextItem.Value("Add any other context about the problem here.\n For example, if you are using a specific version of the language, or if you are using a specific operating system.")
 	defaultConfig.Body.Items = append(defaultConfig.Body.Items, additionalContextItem)
+
+	validationItem := form.NewCheckboxItems("validation")
+	validationItem.Label("Validation")
+	validationItem.AddOption("Yes, I've included all of the above information (Version, settings, logs, etc.)", true)
+	defaultConfig.Body.Items = append(defaultConfig.Body.Items, validationItem)
+
+	validateDiag := defaultConfig.Validate()
+	if validateDiag.HasErrors() {
+		p.diagnostics.Append(validateDiag)
+		return *p.diagnostics
+	}
 
 	filePath := path.Join(issueTemplateFolderPath, "bug_report.yml")
 	tmpl, err := template.New("default").Funcs(helpers.FuncMap).Parse(github_template.DefaultTemplate)

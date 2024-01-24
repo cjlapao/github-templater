@@ -2,7 +2,9 @@ package template
 
 import (
 	_ "embed"
+	"errors"
 
+	"github.com/cjlapao/github-templater/pkg/diagnostics"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/form"
 )
 
@@ -27,4 +29,19 @@ func NewIssueTemplateConfig(name string) *IssueTemplateConfig {
 		Projects:    []string{},
 		Body:        *form.NewGithubForm(),
 	}
+}
+
+func (i IssueTemplateConfig) Validate() diagnostics.Diagnostics {
+	diag := diagnostics.New()
+	if i.Name == "" {
+		diag.AddError(errors.New("name is required"))
+	}
+
+	if i.Description == "" {
+		diag.AddError(errors.New("description is required"))
+	}
+
+	diag.Append(i.Body.Validate())
+
+	return diag
 }
