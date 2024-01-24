@@ -12,6 +12,7 @@ import (
 	"github.com/cjlapao/github-templater/pkg/interfaces"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/bug_report"
 	github_constants "github.com/cjlapao/github-templater/pkg/provisioners/github/constants"
+	"github.com/cjlapao/github-templater/pkg/provisioners/github/feature_request"
 )
 
 type GitHubProvisioner struct {
@@ -22,6 +23,7 @@ type GitHubProvisioner struct {
 	cfg         *config.Config
 	diagnostics *diagnostics.Diagnostics
 	config      interfaces.ProvisionerConfig
+	processors  []interfaces.Processor
 }
 
 func New(ctx context.ProvisionerContext, providerConfig interfaces.ProvisionerConfig) *GitHubProvisioner {
@@ -37,6 +39,11 @@ func New(ctx context.ProvisionerContext, providerConfig interfaces.ProvisionerCo
 	result.ctx.WithValue(constants.ContextResourceName, result.name)
 	diagnostics := diagnostics.NewModuleDiagnostics(result.name)
 	result.diagnostics = &diagnostics
+
+	result.processors = []interfaces.Processor{
+		bug_report.New(&ctx, providerConfig),
+		feature_request.New(&ctx, providerConfig),
+	}
 	return result
 }
 
@@ -63,10 +70,23 @@ func (p GitHubProvisioner) Languages() []string {
 
 func (p GitHubProvisioner) Provision() diagnostics.Diagnostics {
 	p.ctx.LogInfo("Provisioning GitHub")
-	p.tryGenerateGithubFolder()
-	bugReport := bug_report.New(p.ctx, p.config)
-	if bugReportDiag := bugReport.Process(); bugReportDiag.HasErrors() {
-		return bugReportDiag
+	if err := p.tryGenerateGithubFolder(); err != nil {
+		p.ctx.LogError("Error generating github folder", err)
+		p.diagnostics.AddError(err)
+		return *p.diagnostics
+	}
+
+	for _, processor := range p.processors {
+		p.ctx.LogInfo("Processing %s", processor.Name())
+		processorDiag := processor.Process()
+
+		if processorDiag.HasErrors() {
+			p.diagnostics.Append(processorDiag)
+			p.ctx.LogError("Error processing %s", processor.Name())
+			return *p.diagnostics
+		} else {
+			p.ctx.LogInfo("Processed %s", processor.Name())
+		}
 	}
 
 	p.ctx.LogInfo("GolangCI Linter provisioned")

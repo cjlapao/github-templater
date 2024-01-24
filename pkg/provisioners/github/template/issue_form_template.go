@@ -8,10 +8,10 @@ import (
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/form"
 )
 
-//go:embed issue_template.yml
-var DefaultTemplate string
+//go:embed issue_form_template.yml.tpl
+var DefaultFormTemplate string
 
-type IssueTemplateConfig struct {
+type IssueFormTemplateConfig struct {
 	Name        string          `json:"name" yaml:"name"`
 	Description string          `json:"description" yaml:"description"`
 	Labels      []string        `json:"labels" yaml:"labels"`
@@ -20,8 +20,8 @@ type IssueTemplateConfig struct {
 	Body        form.GithubForm `json:"body" yaml:"body"`
 }
 
-func NewIssueTemplateConfig(name string) *IssueTemplateConfig {
-	return &IssueTemplateConfig{
+func NewIssueTemplateConfig(name string) *IssueFormTemplateConfig {
+	return &IssueFormTemplateConfig{
 		Name:        name,
 		Description: "",
 		Labels:      []string{},
@@ -31,7 +31,7 @@ func NewIssueTemplateConfig(name string) *IssueTemplateConfig {
 	}
 }
 
-func (i IssueTemplateConfig) Validate() diagnostics.Diagnostics {
+func (i IssueFormTemplateConfig) Validate() diagnostics.Diagnostics {
 	diag := diagnostics.New()
 	if i.Name == "" {
 		diag.AddError(errors.New("name is required"))
