@@ -1,12 +1,9 @@
 package issuer_template_config
 
 import (
-	"bytes"
 	"errors"
-	"fmt"
 	"os"
 	"path"
-	"text/template"
 
 	_ "embed"
 
@@ -16,13 +13,14 @@ import (
 	"github.com/cjlapao/github-templater/pkg/diagnostics"
 	"github.com/cjlapao/github-templater/pkg/helpers"
 	"github.com/cjlapao/github-templater/pkg/interfaces"
+	"github.com/cjlapao/github-templater/pkg/provisioners/github/common"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/constants"
-	github_template "github.com/cjlapao/github-templater/pkg/provisioners/github/template"
+	"github.com/cjlapao/github-templater/pkg/provisioners/github/template"
 )
 
 var potentialFileNames = []string{
-	"config.yaml",
 	"config.yml",
+	"config.yaml",
 }
 
 type IssueTemplateConfigProcessor struct {
@@ -32,7 +30,7 @@ type IssueTemplateConfigProcessor struct {
 	cfg            *config.Config
 	ctx            *context.ProvisionerContext
 	config         interfaces.ProvisionerConfig
-	configTemplate *github_template.IssueTemplateConfig
+	configTemplate *template.IssueTemplateConfig
 }
 
 func New(ctx *context.ProvisionerContext, provisionerConfig interfaces.ProvisionerConfig) *IssueTemplateConfigProcessor {
@@ -61,7 +59,7 @@ func (p *IssueTemplateConfigProcessor) AddContactLink(name string, url string, a
 	if p.configTemplate == nil {
 		p.configTemplate = p.generateDefault()
 	}
-	configContactLink := github_template.NewIssueTemplateContactLink()
+	configContactLink := template.NewIssueTemplateContactLink()
 	configContactLink.Name = name
 	configContactLink.URL = url
 	configContactLink.About = about
@@ -79,9 +77,8 @@ func (p *IssueTemplateConfigProcessor) Process() diagnostics.Diagnostics {
 		}
 	}
 
-	if err := p.checkIfFileExists(issueTemplateFolderPath); err != nil {
-		return *p.diagnostics
-	}
+	fileExistsDiags := common.CheckIfFileExists(p.ctx, "Issue template", issueTemplateFolderPath, potentialFileNames, constants.IssueTemplateConfigFileExistsEnvVar)
+	p.diagnostics.Append(fileExistsDiags)
 
 	if p.configTemplate == nil {
 		p.configTemplate = p.generateDefault()
@@ -98,64 +95,22 @@ func (p *IssueTemplateConfigProcessor) Process() diagnostics.Diagnostics {
 		return *p.diagnostics
 	}
 
-	filePath := path.Join(issueTemplateFolderPath, "config.yml")
-	tmpl, err := template.New("default").Funcs(helpers.FuncMap).Parse(github_template.DefaultIssueTemplateConfig)
-	if err != nil {
-		p.diagnostics.AddError(err)
-		return *p.diagnostics
-	}
-
-	// Execute the template
-	var output bytes.Buffer
-	err = tmpl.Execute(&output, p.configTemplate)
-	if err != nil {
-		p.diagnostics.AddError(err)
-		return *p.diagnostics
-	}
-
-	err = helper.WriteToFile(output.String(), filePath)
-	if err != nil {
-		p.diagnostics.AddError(err)
+	filePath := path.Join(issueTemplateFolderPath, potentialFileNames[0])
+	if writeDiag := helpers.WriteTemplateToFile(filePath,
+		template.DefaultIssueTemplateConfig,
+		p.configTemplate); writeDiag.HasErrors() {
+		p.diagnostics.Append(writeDiag)
 		return *p.diagnostics
 	}
 
 	return *p.diagnostics
 }
 
-func (p *IssueTemplateConfigProcessor) checkIfFileExists(folder string) error {
-	fileExists := false
-	foundFile := ""
-	for _, fileName := range potentialFileNames {
-		if helper.FileExists(path.Join(folder, fileName)) {
-			fileExists = true
-			foundFile = fileName
-			break
-		}
-	}
-
-	if fileExists {
-		override := p.cfg.RequestBoolFromUser(constants.IssueTemplateConfigFileExistsEnvVar, fmt.Sprintf("A bug report file \"%v\" already exists, do you want to override it? [y/n]", foundFile), false)
-		if !override {
-			msg := fmt.Sprintf("A issue template config file \"%v\" already exists, ignoring provisioner on request by user", foundFile)
-			p.ctx.LogWarn(msg)
-			p.diagnostics.AddWarning(msg)
-			return errors.New("issue template config file already exists")
-		}
-		err := os.Remove(path.Join(folder, "config.yml"))
-		if err != nil {
-			p.diagnostics.AddError(err)
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (p *IssueTemplateConfigProcessor) generateDefault() *github_template.IssueTemplateConfig {
-	defaultConfig := github_template.NewIssueTemplateConfig()
+func (p *IssueTemplateConfigProcessor) generateDefault() *template.IssueTemplateConfig {
+	defaultConfig := template.NewIssueTemplateConfig()
 	defaultConfig.BlankIssuesEnabled = false
 
-	defaultConfig.ContactLinks = append(defaultConfig.ContactLinks, github_template.IssueTemplateContactLink{
+	defaultConfig.ContactLinks = append(defaultConfig.ContactLinks, template.IssueTemplateContactLink{
 		Name:  "GitHub",
 		URL:   "https://example.com",
 		About: "dsdsds",

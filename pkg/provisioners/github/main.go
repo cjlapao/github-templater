@@ -14,6 +14,7 @@ import (
 	github_constants "github.com/cjlapao/github-templater/pkg/provisioners/github/constants"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/feature_request"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/issuer_template_config"
+	"github.com/cjlapao/github-templater/pkg/provisioners/github/stale"
 )
 
 type GitHubProvisioner struct {
@@ -42,6 +43,7 @@ func New(ctx context.ProvisionerContext, providerConfig interfaces.ProvisionerCo
 	result.diagnostics = &diagnostics
 
 	result.processors = []interfaces.Processor{
+		stale.New(&ctx, providerConfig),
 		issuer_template_config.New(&ctx, providerConfig),
 		bug_report.New(&ctx, providerConfig),
 		feature_request.New(&ctx, providerConfig),

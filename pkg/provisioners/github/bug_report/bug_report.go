@@ -1,14 +1,9 @@
 package bug_report
 
 import (
-	"bytes"
 	"errors"
-	"fmt"
 	"os"
 	"path"
-	"text/template"
-
-	_ "embed"
 
 	"github.com/cjlapao/common-go/helper"
 	"github.com/cjlapao/github-templater/pkg/config"
@@ -16,14 +11,15 @@ import (
 	"github.com/cjlapao/github-templater/pkg/diagnostics"
 	"github.com/cjlapao/github-templater/pkg/helpers"
 	"github.com/cjlapao/github-templater/pkg/interfaces"
+	"github.com/cjlapao/github-templater/pkg/provisioners/github/common"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/constants"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/form"
-	github_template "github.com/cjlapao/github-templater/pkg/provisioners/github/template"
+	"github.com/cjlapao/github-templater/pkg/provisioners/github/template"
 )
 
 var potentialFileNames = []string{
-	"bug_report.yaml",
 	"bug_report.yml",
+	"bug_report.yaml",
 	"bug_report.md",
 }
 
@@ -34,7 +30,7 @@ type BugReportProcessor struct {
 	cfg             *config.Config
 	ctx             *context.ProvisionerContext
 	config          interfaces.ProvisionerConfig
-	bugReportConfig *github_template.IssueFormTemplate
+	bugReportConfig *template.IssueFormTemplate
 }
 
 func New(ctx *context.ProvisionerContext, provisionerConfig interfaces.ProvisionerConfig) *BugReportProcessor {
@@ -59,7 +55,7 @@ func (p *BugReportProcessor) ID() string {
 	return p.id
 }
 
-func (p *BugReportProcessor) SetConfig(config *github_template.IssueFormTemplate) {
+func (p *BugReportProcessor) SetConfig(config *template.IssueFormTemplate) {
 	p.bugReportConfig = config
 }
 
@@ -72,9 +68,8 @@ func (p *BugReportProcessor) Process() diagnostics.Diagnostics {
 		}
 	}
 
-	if err := p.checkIfFileExists(issueTemplateFolderPath); err != nil {
-		return *p.diagnostics
-	}
+	fileExistsDiags := common.CheckIfFileExists(p.ctx, "Bug Report", issueTemplateFolderPath, potentialFileNames, constants.BugReportFileExistsEnvVar)
+	p.diagnostics.Append(fileExistsDiags)
 
 	if p.bugReportConfig == nil {
 		p.bugReportConfig = p.generateDefault()
@@ -91,61 +86,19 @@ func (p *BugReportProcessor) Process() diagnostics.Diagnostics {
 		return *p.diagnostics
 	}
 
-	filePath := path.Join(issueTemplateFolderPath, "bug_report.yml")
-	tmpl, err := template.New("default").Funcs(helpers.FuncMap).Parse(github_template.DefaultFormTemplate)
-	if err != nil {
-		p.diagnostics.AddError(err)
-		return *p.diagnostics
-	}
-
-	// Execute the template
-	var output bytes.Buffer
-	err = tmpl.Execute(&output, p.bugReportConfig)
-	if err != nil {
-		p.diagnostics.AddError(err)
-		return *p.diagnostics
-	}
-
-	err = helper.WriteToFile(output.String(), filePath)
-	if err != nil {
-		p.diagnostics.AddError(err)
+	filePath := path.Join(issueTemplateFolderPath, potentialFileNames[0])
+	if writeDiag := helpers.WriteTemplateToFile(filePath,
+		template.DefaultFormTemplate,
+		p.bugReportConfig); writeDiag.HasErrors() {
+		p.diagnostics.Append(writeDiag)
 		return *p.diagnostics
 	}
 
 	return *p.diagnostics
 }
 
-func (p *BugReportProcessor) checkIfFileExists(folder string) error {
-	fileExists := false
-	foundFile := ""
-	for _, fileName := range potentialFileNames {
-		if helper.FileExists(path.Join(folder, fileName)) {
-			fileExists = true
-			foundFile = fileName
-			break
-		}
-	}
-
-	if fileExists {
-		override := p.cfg.RequestBoolFromUser(constants.BugReportFileExistsEnvVar, fmt.Sprintf("A bug report file \"%v\" already exists, do you want to override it? [y/n]", foundFile), false)
-		if !override {
-			msg := fmt.Sprintf("A bug report file \"%v\" already exists, ignoring provisioner on request by user", foundFile)
-			p.ctx.LogWarn(msg)
-			p.diagnostics.AddWarning(msg)
-			return errors.New("bug report file already exists")
-		}
-		err := os.Remove(path.Join(folder, "bug_report.yml"))
-		if err != nil {
-			p.diagnostics.AddError(err)
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (p *BugReportProcessor) generateDefault() *github_template.IssueFormTemplate {
-	defaultConfig := github_template.NewIssueTemplate("Bug Report")
+func (p *BugReportProcessor) generateDefault() *template.IssueFormTemplate {
+	defaultConfig := template.NewIssueTemplate("Bug Report")
 	defaultConfig.Labels = append(defaultConfig.Labels, "bug")
 	defaultConfig.Description = "Create a report to help us improve"
 	bugDescriptionItem := form.NewTextAreaItem("bug_description")
