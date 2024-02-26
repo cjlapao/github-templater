@@ -10,6 +10,7 @@ import (
 	"github.com/cjlapao/github-templater/pkg/context"
 	"github.com/cjlapao/github-templater/pkg/provision"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github"
+	dependabot "github.com/cjlapao/github-templater/pkg/provisioners/github_dependabot"
 	"github.com/cjlapao/github-templater/pkg/provisioners/golangci_linter"
 	"github.com/cjlapao/github-templater/pkg/provisioners/makefile"
 )
@@ -41,9 +42,10 @@ func main() {
 func Init() {
 	ctx := context.Get()
 	p := provision.New()
-	p.Add(github.GitHubProvisioner{})
-	p.Add(golangci_linter.GolangCILinterProvisioner{})
-	p.Add(makefile.MakeFileProvisioner{})
+	p.Add(&github.GitHubProvisioner{})
+	p.Add(&golangci_linter.GolangCILinterProvisioner{})
+	p.Add(&makefile.MakeFileProvisioner{})
+	p.Add(&dependabot.DependabotProvisioner{})
 	if diag := p.Provision(); diag.HasErrors() {
 		for _, err := range diag.Errors() {
 			ctx.LogError(err.Error())

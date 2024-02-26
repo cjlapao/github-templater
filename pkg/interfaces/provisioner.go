@@ -10,6 +10,6 @@ type Provisioner interface {
 	Name() string
 	ID() string
 	Context() *provisioner_context.ProvisionerContext
-	Provision() diagnostics.Diagnostics
+	Run() diagnostics.Diagnostics
 	Languages() []string
 }

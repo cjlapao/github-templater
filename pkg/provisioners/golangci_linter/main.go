@@ -7,6 +7,7 @@ import (
 
 	_ "embed"
 
+	"github.com/cjlapao/common-go-dependency-tree/dependencytree"
 	"github.com/cjlapao/common-go/helper"
 	"github.com/cjlapao/github-templater/pkg/config"
 	"github.com/cjlapao/github-templater/pkg/constants"
@@ -19,19 +20,21 @@ import (
 var defaultTemplate string
 
 type GolangCILinterProvisioner struct {
-	id          string
-	name        string
-	languages   []string
-	ctx         *context.ProvisionerContext
-	cfg         *config.Config
-	diagnostics *diagnostics.Diagnostics
-	config      interfaces.ProvisionerConfig
+	id                 string
+	name               string
+	languages          []string
+	ctx                *context.ProvisionerContext
+	cfg                *config.Config
+	diagnostics        *diagnostics.Diagnostics
+	config             interfaces.ProvisionerConfig
+	depTree            *dependencytree.DependencyTreeService[interfaces.Executor]
+	dependencyTreeItem *dependencytree.DependencyTreeItem[interfaces.Executor]
 }
 
 func New(ctx context.ProvisionerContext, providerConfig interfaces.ProvisionerConfig) *GolangCILinterProvisioner {
 	result := &GolangCILinterProvisioner{
-		id:        "a762b8c7-9e43-45f8-aa55-04b9fc42e1b2",
-		name:      "golangci_linter",
+		id:        constants.GoLangCILinterProvisionerID,
+		name:      "GolangCI Linter Provisioner",
 		ctx:       &ctx,
 		cfg:       config.Get(),
 		languages: []string{"go", "golang"},
@@ -42,31 +45,48 @@ func New(ctx context.ProvisionerContext, providerConfig interfaces.ProvisionerCo
 
 	diagnostics := diagnostics.NewModuleDiagnostics(result.name)
 	result.diagnostics = &diagnostics
+
 	return result
 }
 
-func (p GolangCILinterProvisioner) New(ctx context.ProvisionerContext, config interfaces.ProvisionerConfig) interfaces.Provisioner {
+func (p *GolangCILinterProvisioner) New(ctx context.ProvisionerContext, config interfaces.ProvisionerConfig) interfaces.Provisioner {
 	item := New(ctx, config)
 	return item
 }
 
-func (p GolangCILinterProvisioner) Name() string {
+func (p *GolangCILinterProvisioner) Register() error {
+	depTree := dependencytree.Get[interfaces.Executor](&GolangCILinterProvisioner{})
+	if depTree == nil {
+		p.ctx.LogError("Error getting dependency tree")
+		return fmt.Errorf("Error getting dependency tree")
+	}
+	depItem, err := depTree.AddRootItem(p.id, p.name, p)
+	if err != nil {
+		p.ctx.LogError("Error adding %v to dependency tree, err: %v", p.name, err.Error())
+		return err
+	}
+	p.depTree = depTree
+	p.dependencyTreeItem = depItem
+	return nil
+}
+
+func (p *GolangCILinterProvisioner) Name() string {
 	return p.name
 }
 
-func (p GolangCILinterProvisioner) ID() string {
+func (p *GolangCILinterProvisioner) ID() string {
 	return p.id
 }
 
-func (p GolangCILinterProvisioner) Context() *context.ProvisionerContext {
+func (p *GolangCILinterProvisioner) Context() *context.ProvisionerContext {
 	return p.ctx
 }
 
-func (p GolangCILinterProvisioner) Languages() []string {
+func (p *GolangCILinterProvisioner) Languages() []string {
 	return p.languages
 }
 
-func (p GolangCILinterProvisioner) Provision() diagnostics.Diagnostics {
+func (p *GolangCILinterProvisioner) Run() diagnostics.Diagnostics {
 	filePath := fmt.Sprintf("%s/.golangci.yml", p.config.WorkingDirectory)
 	p.ctx.LogInfo("Provisioning GolangCI Linter")
 	defaultConfig := Configuration{
@@ -101,4 +121,8 @@ func (p GolangCILinterProvisioner) Provision() diagnostics.Diagnostics {
 
 	p.ctx.LogInfo("GolangCI Linter provisioned")
 	return *p.diagnostics
+}
+
+func (p *GolangCILinterProvisioner) ReshuffleCallback() func() {
+	return nil
 }

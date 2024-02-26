@@ -3,11 +3,13 @@ package provision
 import (
 	"fmt"
 
+	"github.com/cjlapao/common-go-dependency-tree/dependencytree"
 	logger "github.com/cjlapao/common-go-logger"
 	"github.com/cjlapao/github-templater/pkg/config"
 	"github.com/cjlapao/github-templater/pkg/context"
 	"github.com/cjlapao/github-templater/pkg/diagnostics"
 	"github.com/cjlapao/github-templater/pkg/interfaces"
+	"github.com/cjlapao/github-templater/pkg/provisioners/github"
 	"github.com/pkg/errors"
 )
 
@@ -30,12 +32,16 @@ func New() *ProvisionerService {
 		provisioners: []interfaces.Provisioner{},
 		config:       interfaces.ProvisionerConfig{},
 	}
+
 	result.config = result.getConfig()
 	return result
 }
 
 func (p *ProvisionerService) Add(provisioner interfaces.Provisioner) {
 	newProvisioner := provisioner.New(*p.ctx, p.config)
+	if executor, ok := newProvisioner.(interfaces.Executor); ok {
+		executor.Register()
+	}
 	p.provisioners = append(p.provisioners, newProvisioner)
 }
 
@@ -74,6 +80,15 @@ func (p *ProvisionerService) GetByLanguage(language string) []interfaces.Provisi
 		}
 	}
 
+	dependencyTree := dependencytree.Get[interfaces.Executor](&github.GitHubProvisioner{})
+	dependencyTree.SetDebug(config.Get().IsDebug())
+	dependencyTree.SetVerbose(config.Get().IsDebug())
+
+	_, err := dependencyTree.Build()
+	if err != nil {
+		p.ctx.LogError(err.Error())
+	}
+
 	return result
 }
 
@@ -92,6 +107,7 @@ func (p *ProvisionerService) Provision() diagnostics.Diagnostics {
 	}
 
 	p.ctx.LogInfo("Provisioning for language %v", language)
+	p.config.Language = language
 	availableProvisioners := p.GetByLanguage(language)
 	if len(availableProvisioners) == 0 {
 		p.ctx.LogError("No provisioners found for language %v", language)
@@ -101,7 +117,7 @@ func (p *ProvisionerService) Provision() diagnostics.Diagnostics {
 
 	for _, provisioner := range availableProvisioners {
 		base := provisioner.New(*p.ctx, p.config)
-		if provisionerDiag := base.Provision(); provisionerDiag.HasErrors() {
+		if provisionerDiag := base.Run(); provisionerDiag.HasErrors() {
 			diag.Append(provisionerDiag)
 		}
 	}

@@ -2,20 +2,23 @@ package issuer_template_config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path"
 
 	_ "embed"
 
+	"github.com/cjlapao/common-go-dependency-tree/dependencytree"
 	"github.com/cjlapao/common-go/helper"
 	"github.com/cjlapao/github-templater/pkg/config"
+	pkg_constants "github.com/cjlapao/github-templater/pkg/constants"
 	"github.com/cjlapao/github-templater/pkg/context"
 	"github.com/cjlapao/github-templater/pkg/diagnostics"
 	"github.com/cjlapao/github-templater/pkg/helpers"
 	"github.com/cjlapao/github-templater/pkg/interfaces"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/common"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/constants"
-	"github.com/cjlapao/github-templater/pkg/provisioners/github/template"
+	"github.com/cjlapao/github-templater/pkg/provisioners/github/templates"
 )
 
 var potentialFileNames = []string{
@@ -24,27 +27,51 @@ var potentialFileNames = []string{
 }
 
 type IssueTemplateConfigProcessor struct {
-	id             string
-	name           string
-	diagnostics    *diagnostics.Diagnostics
-	cfg            *config.Config
-	ctx            *context.ProvisionerContext
-	config         interfaces.ProvisionerConfig
-	configTemplate *template.IssueTemplateConfig
+	id                 string
+	name               string
+	diagnostics        *diagnostics.Diagnostics
+	cfg                *config.Config
+	ctx                *context.ProvisionerContext
+	config             interfaces.ProvisionerConfig
+	configTemplate     *templates.IssueTemplateConfig
+	depTree            *dependencytree.DependencyTreeService[interfaces.Executor]
+	dependencyTreeItem *dependencytree.DependencyTreeItem[interfaces.Executor]
 }
 
 func New(ctx *context.ProvisionerContext, provisionerConfig interfaces.ProvisionerConfig) *IssueTemplateConfigProcessor {
 	result := &IssueTemplateConfigProcessor{
-		id:     "github_issue_template_config_processor",
+		id:     pkg_constants.GitHubIssueTemplateConfigProcessorID,
 		name:   "Issue Template Config Processor",
 		cfg:    config.Get(),
 		ctx:    ctx,
 		config: provisionerConfig,
 	}
 
+	result.ctx.WithValue(pkg_constants.ContextResourceName, result.name)
 	diagnostics := diagnostics.NewModuleDiagnostics(result.name)
 	result.diagnostics = &diagnostics
+
 	return result
+}
+
+func (p *IssueTemplateConfigProcessor) Register() error {
+	depTree := dependencytree.Get[interfaces.Executor](&IssueTemplateConfigProcessor{})
+	if depTree == nil {
+		errorMsg := "Error getting dependency tree"
+		p.ctx.LogError(errorMsg)
+		return errors.New(errorMsg)
+	}
+	treeItem, err := depTree.AddItem(p.id, p.name, pkg_constants.GitHubProvisionerID, p)
+	if err != nil {
+		errorMsg := fmt.Sprintf("Error adding %v to dependency tree, err: %v", p.name, err.Error())
+		p.ctx.LogError(errorMsg)
+		return errors.New(errorMsg)
+	}
+
+	p.dependencyTreeItem = treeItem
+	p.depTree = depTree
+
+	return nil
 }
 
 func (p *IssueTemplateConfigProcessor) Name() string {
@@ -59,7 +86,7 @@ func (p *IssueTemplateConfigProcessor) AddContactLink(name string, url string, a
 	if p.configTemplate == nil {
 		p.configTemplate = p.generateDefault()
 	}
-	configContactLink := template.NewIssueTemplateContactLink()
+	configContactLink := templates.NewIssueTemplateContactLink()
 	configContactLink.Name = name
 	configContactLink.URL = url
 	configContactLink.About = about
@@ -68,7 +95,7 @@ func (p *IssueTemplateConfigProcessor) AddContactLink(name string, url string, a
 	return *p.diagnostics
 }
 
-func (p *IssueTemplateConfigProcessor) Process() diagnostics.Diagnostics {
+func (p *IssueTemplateConfigProcessor) Run() diagnostics.Diagnostics {
 	issueTemplateFolderPath := path.Join(p.config.WorkingDirectory, constants.GithubFolder, constants.IssueTemplateFolder)
 	if !helper.FileExists(issueTemplateFolderPath) {
 		err := os.Mkdir(issueTemplateFolderPath, 0o755)
@@ -97,7 +124,7 @@ func (p *IssueTemplateConfigProcessor) Process() diagnostics.Diagnostics {
 
 	filePath := path.Join(issueTemplateFolderPath, potentialFileNames[0])
 	if writeDiag := helpers.WriteTemplateToFile(filePath,
-		template.DefaultIssueTemplateConfig,
+		templates.DefaultIssueTemplateConfig,
 		p.configTemplate); writeDiag.HasErrors() {
 		p.diagnostics.Append(writeDiag)
 		return *p.diagnostics
@@ -106,14 +133,18 @@ func (p *IssueTemplateConfigProcessor) Process() diagnostics.Diagnostics {
 	return *p.diagnostics
 }
 
-func (p *IssueTemplateConfigProcessor) generateDefault() *template.IssueTemplateConfig {
-	defaultConfig := template.NewIssueTemplateConfig()
+func (p *IssueTemplateConfigProcessor) generateDefault() *templates.IssueTemplateConfig {
+	defaultConfig := templates.NewIssueTemplateConfig()
 	defaultConfig.BlankIssuesEnabled = false
 
-	defaultConfig.ContactLinks = append(defaultConfig.ContactLinks, template.IssueTemplateContactLink{
+	defaultConfig.ContactLinks = append(defaultConfig.ContactLinks, templates.IssueTemplateContactLink{
 		Name:  "GitHub",
 		URL:   "https://example.com",
 		About: "dsdsds",
 	})
 	return &defaultConfig
+}
+
+func (p IssueTemplateConfigProcessor) ReshuffleCallback() func() {
+	return nil
 }

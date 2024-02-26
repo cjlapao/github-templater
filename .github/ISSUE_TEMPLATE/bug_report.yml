@@ -8,16 +8,16 @@ body:
   attributes:
     label: Bug description
     render: Markdown
-    value: &#39;**Please describe the bug**&#39;
+    value: '**Please describe the bug**'
 - type: textarea
   id: reproduce_steps
   attributes:
     label: Steps to reproduce
     value: |-
         Steps to reproduce the behavior:
-        1. Go to &#39;...&#39;
-        2. Click on &#39;....&#39;
-        3. Scroll down to &#39;....&#39;
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
         4. See error
 - type: input
   id: version
@@ -50,5 +50,5 @@ body:
   attributes:
     label: Validation
     options:
-        - label: Yes, I&#39;ve included all of the above information (Version, settings, logs, etc.)
+        - label: Yes, I've included all of the above information (Version, settings, logs, etc.)
           required: true

@@ -1,128 +1,132 @@
-package bug_report
+package dependabot
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path"
 
 	"github.com/cjlapao/common-go-dependency-tree/dependencytree"
 	"github.com/cjlapao/common-go/helper"
 	"github.com/cjlapao/github-templater/pkg/config"
-	pkg_constants "github.com/cjlapao/github-templater/pkg/constants"
+	"github.com/cjlapao/github-templater/pkg/constants"
 	"github.com/cjlapao/github-templater/pkg/context"
 	"github.com/cjlapao/github-templater/pkg/diagnostics"
 	"github.com/cjlapao/github-templater/pkg/helpers"
 	"github.com/cjlapao/github-templater/pkg/interfaces"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/common"
-	"github.com/cjlapao/github-templater/pkg/provisioners/github/constants"
+	github_constants "github.com/cjlapao/github-templater/pkg/provisioners/github/constants"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/form"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/templates"
 )
 
 var potentialFileNames = []string{
-	"bug_report.yml",
-	"bug_report.yaml",
-	"bug_report.md",
+	"dependabot.yml",
+	"dependabot.yaml",
 }
 
-type BugReportProcessor struct {
+type DependabotProvisioner struct {
 	id                 string
 	name               string
 	diagnostics        *diagnostics.Diagnostics
 	cfg                *config.Config
 	ctx                *context.ProvisionerContext
 	config             interfaces.ProvisionerConfig
-	bugReportConfig    *templates.IssueFormTemplate
+	dependabotConfig   *templates.IssueFormTemplate
+	languages          []string
 	depTree            *dependencytree.DependencyTreeService[interfaces.Executor]
 	dependencyTreeItem *dependencytree.DependencyTreeItem[interfaces.Executor]
 }
 
-func New(ctx *context.ProvisionerContext, provisionerConfig interfaces.ProvisionerConfig) *BugReportProcessor {
-	result := &BugReportProcessor{
-		id:     pkg_constants.GitHubBugReportProcessorID,
-		name:   "Bug Report Processor",
-		cfg:    config.Get(),
-		ctx:    ctx,
-		config: provisionerConfig,
+func New(ctx context.ProvisionerContext, provisionerConfig interfaces.ProvisionerConfig) *DependabotProvisioner {
+	result := &DependabotProvisioner{
+		id:        constants.GitHubDependabotProvisionerID,
+		name:      "GitHub Dependabot Processor",
+		cfg:       config.Get(),
+		ctx:       &ctx,
+		config:    provisionerConfig,
+		languages: []string{"go", "golang", "docker"},
 	}
 
-	result.ctx.WithValue(pkg_constants.ContextResourceName, result.name)
+	result.ctx.WithValue(constants.GitHubProvisionerID, result.name)
 	diagnostics := diagnostics.NewModuleDiagnostics(result.name)
 	result.diagnostics = &diagnostics
-
 	return result
 }
 
-func (p *BugReportProcessor) Register() error {
-	depTree := dependencytree.Get[interfaces.Executor](&BugReportProcessor{})
+func (p *DependabotProvisioner) New(ctx context.ProvisionerContext, config interfaces.ProvisionerConfig) interfaces.Provisioner {
+	item := New(ctx, config)
+	return item
+}
+
+func (p *DependabotProvisioner) Register() error {
+	depTree := dependencytree.Get[interfaces.Executor](&DependabotProvisioner{})
 	if depTree == nil {
-		errorMsg := "Error getting dependency tree"
-		p.ctx.LogError(errorMsg)
-		return errors.New(errorMsg)
+		p.ctx.LogError("Error getting dependency tree")
+		return errors.New("Error getting dependency tree")
 	}
-	treeItem, err := depTree.AddItem(p.id, p.name, pkg_constants.GitHubProvisionerID, p)
+	depItem, err := depTree.AddItem(p.id, p.name, constants.GoLangCILinterProvisionerID, p)
 	if err != nil {
-		errorMsg := fmt.Sprintf("Error adding %v to dependency tree, err: %v", p.name, err.Error())
-		p.ctx.LogError(errorMsg)
-		return errors.New(errorMsg)
+		p.ctx.LogError("Error adding %v to dependency tree, err: %v", p.name, err.Error())
+		return nil
 	}
-
-	if err := treeItem.DependsOn(pkg_constants.GitHubIssueTemplateConfigProcessorID); err != nil {
-		errorMsg := fmt.Sprintf("Error adding dependency to item %v in dependency tree, err: %v", p.name, err.Error())
-		p.ctx.LogError(errorMsg)
-		return errors.New(errorMsg)
-	}
-
-	p.dependencyTreeItem = treeItem
 	p.depTree = depTree
+	p.dependencyTreeItem = depItem
 
 	return nil
 }
 
-func (p *BugReportProcessor) Name() string {
+func (p *DependabotProvisioner) Name() string {
 	return p.name
 }
 
-func (p *BugReportProcessor) ID() string {
+func (p *DependabotProvisioner) ID() string {
 	return p.id
 }
 
-func (p *BugReportProcessor) SetConfig(config *templates.IssueFormTemplate) {
-	p.bugReportConfig = config
+func (p *DependabotProvisioner) Context() *context.ProvisionerContext {
+	return p.ctx
 }
 
-func (p *BugReportProcessor) Run() diagnostics.Diagnostics {
-	issueTemplateFolderPath := path.Join(p.config.WorkingDirectory, constants.GithubFolder, constants.IssueTemplateFolder)
-	if !helper.FileExists(issueTemplateFolderPath) {
-		err := os.Mkdir(issueTemplateFolderPath, 0o755)
+func (p *DependabotProvisioner) Languages() []string {
+	return p.languages
+}
+
+func (p *DependabotProvisioner) Run() diagnostics.Diagnostics {
+	// Ask the user if they want to generate a dependabot config file
+	if !p.cfg.RequestBoolFromUser(DependabotGenerateEnvVar, "Do you want to generate a dependabot config file?", false) {
+		return *p.diagnostics
+	}
+
+	githubFolder := path.Join(p.config.WorkingDirectory, github_constants.GithubFolder)
+	if !helper.FileExists(githubFolder) {
+		err := os.Mkdir(githubFolder, 0o755)
 		if err != nil {
 			p.diagnostics.AddError(err)
 		}
 	}
 
-	fileExistsDiags := common.CheckIfFileExists(p.ctx, "Bug Report", issueTemplateFolderPath, potentialFileNames, constants.BugReportFileExistsEnvVar)
+	fileExistsDiags := common.CheckIfFileExists(p.ctx, "Dependabot", githubFolder, potentialFileNames, DependabotFileExistsEnvVar)
 	p.diagnostics.Append(fileExistsDiags)
 
-	if p.bugReportConfig == nil {
-		p.bugReportConfig = p.generateDefault()
+	if p.dependabotConfig == nil {
+		p.dependabotConfig = p.generateDefault()
 	}
 
-	if p.bugReportConfig == nil {
-		p.diagnostics.AddError(errors.New("bug report config is nil"))
+	if p.dependabotConfig == nil {
+		p.diagnostics.AddError(errors.New("dependabot config is nil"))
 		return *p.diagnostics
 	}
 
-	validateDiag := p.bugReportConfig.Validate()
+	validateDiag := p.dependabotConfig.Validate()
 	if validateDiag.HasErrors() {
 		p.diagnostics.Append(validateDiag)
 		return *p.diagnostics
 	}
 
-	filePath := path.Join(issueTemplateFolderPath, potentialFileNames[0])
+	filePath := path.Join(githubFolder, potentialFileNames[0])
 	if writeDiag := helpers.WriteTemplateToFile(filePath,
 		templates.DefaultFormTemplate,
-		p.bugReportConfig); writeDiag.HasErrors() {
+		p.dependabotConfig); writeDiag.HasErrors() {
 		p.diagnostics.Append(writeDiag)
 		return *p.diagnostics
 	}
@@ -130,7 +134,7 @@ func (p *BugReportProcessor) Run() diagnostics.Diagnostics {
 	return *p.diagnostics
 }
 
-func (p *BugReportProcessor) generateDefault() *templates.IssueFormTemplate {
+func (p *DependabotProvisioner) generateDefault() *templates.IssueFormTemplate {
 	defaultConfig := templates.NewIssueTemplate("Bug Report")
 	defaultConfig.Labels = append(defaultConfig.Labels, "bug")
 	defaultConfig.Description = "Create a report to help us improve"
@@ -171,6 +175,6 @@ func (p *BugReportProcessor) generateDefault() *templates.IssueFormTemplate {
 	return defaultConfig
 }
 
-func (p BugReportProcessor) ReshuffleCallback() func() {
+func (p *DependabotProvisioner) ReshuffleCallback() func() {
 	return nil
 }

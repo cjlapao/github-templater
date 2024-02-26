@@ -1,9 +1,11 @@
 package github
 
 import (
+	"errors"
 	"os"
 	"path"
 
+	"github.com/cjlapao/common-go-dependency-tree/dependencytree"
 	"github.com/cjlapao/common-go/helper"
 	"github.com/cjlapao/github-templater/pkg/config"
 	"github.com/cjlapao/github-templater/pkg/constants"
@@ -18,20 +20,22 @@ import (
 )
 
 type GitHubProvisioner struct {
-	id          string
-	name        string
-	languages   []string
-	ctx         *context.ProvisionerContext
-	cfg         *config.Config
-	diagnostics *diagnostics.Diagnostics
-	config      interfaces.ProvisionerConfig
-	processors  []interfaces.Processor
+	id                 string
+	name               string
+	languages          []string
+	ctx                *context.ProvisionerContext
+	cfg                *config.Config
+	diagnostics        *diagnostics.Diagnostics
+	config             interfaces.ProvisionerConfig
+	processors         []interfaces.Processor
+	depTree            *dependencytree.DependencyTreeService[interfaces.Executor]
+	dependencyTreeItem *dependencytree.DependencyTreeItem[interfaces.Executor]
 }
 
 func New(ctx context.ProvisionerContext, providerConfig interfaces.ProvisionerConfig) *GitHubProvisioner {
 	result := &GitHubProvisioner{
-		id:        "1a3a0ae0-bb6b-4e69-8d14-6aa3e150ec3e",
-		name:      "github",
+		id:        constants.GitHubProvisionerID,
+		name:      "GitHub Provisioner",
 		ctx:       &ctx,
 		cfg:       config.Get(),
 		languages: []string{"all"},
@@ -43,11 +47,12 @@ func New(ctx context.ProvisionerContext, providerConfig interfaces.ProvisionerCo
 	result.diagnostics = &diagnostics
 
 	result.processors = []interfaces.Processor{
-		stale.New(&ctx, providerConfig),
-		issuer_template_config.New(&ctx, providerConfig),
 		bug_report.New(&ctx, providerConfig),
 		feature_request.New(&ctx, providerConfig),
+		stale.New(&ctx, providerConfig),
+		issuer_template_config.New(&ctx, providerConfig),
 	}
+
 	return result
 }
 
@@ -56,23 +61,47 @@ func (p GitHubProvisioner) New(ctx context.ProvisionerContext, config interfaces
 	return item
 }
 
-func (p GitHubProvisioner) Name() string {
+func (p *GitHubProvisioner) Register() error {
+	depTree := dependencytree.Get[interfaces.Executor](&GitHubProvisioner{})
+	if depTree == nil {
+		p.ctx.LogError("Error getting dependency tree")
+		return errors.New("Error getting dependency tree")
+	}
+	depItem, err := depTree.AddRootItem(p.id, p.name, p)
+	if err != nil {
+		p.ctx.LogError("Error adding %v to dependency tree, err: %v", p.name, err.Error())
+		return err
+	}
+
+	for _, processor := range p.processors {
+		if executor, ok := processor.(interfaces.Executor); ok {
+			executor.Register()
+		}
+	}
+
+	p.depTree = depTree
+	p.dependencyTreeItem = depItem
+
+	return nil
+}
+
+func (p *GitHubProvisioner) Name() string {
 	return p.name
 }
 
-func (p GitHubProvisioner) ID() string {
+func (p *GitHubProvisioner) ID() string {
 	return p.id
 }
 
-func (p GitHubProvisioner) Context() *context.ProvisionerContext {
+func (p *GitHubProvisioner) Context() *context.ProvisionerContext {
 	return p.ctx
 }
 
-func (p GitHubProvisioner) Languages() []string {
+func (p *GitHubProvisioner) Languages() []string {
 	return p.languages
 }
 
-func (p GitHubProvisioner) Provision() diagnostics.Diagnostics {
+func (p *GitHubProvisioner) Run() diagnostics.Diagnostics {
 	p.ctx.LogInfo("Provisioning GitHub")
 	if err := p.tryGenerateGithubFolder(); err != nil {
 		p.ctx.LogError("Error generating github folder", err)
@@ -82,7 +111,7 @@ func (p GitHubProvisioner) Provision() diagnostics.Diagnostics {
 
 	for _, processor := range p.processors {
 		p.ctx.LogInfo("Processing %s", processor.Name())
-		processorDiag := processor.Process()
+		processorDiag := processor.Run()
 
 		if processorDiag.HasErrors() {
 			p.diagnostics.Append(processorDiag)
@@ -99,7 +128,7 @@ func (p GitHubProvisioner) Provision() diagnostics.Diagnostics {
 	return *p.diagnostics
 }
 
-func (p GitHubProvisioner) tryGenerateGithubFolder() error {
+func (p *GitHubProvisioner) tryGenerateGithubFolder() error {
 	githubFolderPath := path.Join(p.config.WorkingDirectory, github_constants.GithubFolder)
 	if !helper.FileExists(githubFolderPath) {
 		err := os.Mkdir(githubFolderPath, 0o755)

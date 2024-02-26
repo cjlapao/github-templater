@@ -1,8 +1,8 @@
 package helpers
 
 import (
-	"html/template"
 	"strings"
+	"text/template"
 
 	"github.com/cjlapao/common-go/helper"
 	"github.com/cjlapao/github-templater/pkg/diagnostics"

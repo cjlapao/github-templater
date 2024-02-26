@@ -2,11 +2,14 @@ package feature_request
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path"
 
+	"github.com/cjlapao/common-go-dependency-tree/dependencytree"
 	"github.com/cjlapao/common-go/helper"
 	"github.com/cjlapao/github-templater/pkg/config"
+	pkg_constants "github.com/cjlapao/github-templater/pkg/constants"
 	"github.com/cjlapao/github-templater/pkg/context"
 	"github.com/cjlapao/github-templater/pkg/diagnostics"
 	"github.com/cjlapao/github-templater/pkg/helpers"
@@ -14,7 +17,7 @@ import (
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/common"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/constants"
 	"github.com/cjlapao/github-templater/pkg/provisioners/github/form"
-	"github.com/cjlapao/github-templater/pkg/provisioners/github/template"
+	"github.com/cjlapao/github-templater/pkg/provisioners/github/templates"
 )
 
 var potentialFileNames = []string{
@@ -30,24 +33,54 @@ type FeatureRequestProcessor struct {
 	cfg                  *config.Config
 	ctx                  *context.ProvisionerContext
 	config               interfaces.ProvisionerConfig
-	featureRequestConfig *template.IssueFormTemplate
+	featureRequestConfig *templates.IssueFormTemplate
+	depTree              *dependencytree.DependencyTreeService[interfaces.Executor]
+	dependencyTreeItem   *dependencytree.DependencyTreeItem[interfaces.Executor]
 }
 
 func New(ctx *context.ProvisionerContext, provisionerConfig interfaces.ProvisionerConfig) *FeatureRequestProcessor {
 	result := &FeatureRequestProcessor{
-		id:     "github_feature_request_processor",
+		id:     pkg_constants.GitHubFeatureRequestProcessorID,
 		name:   "Feature Request Processor",
 		cfg:    config.Get(),
 		ctx:    ctx,
 		config: provisionerConfig,
 	}
 
+	result.ctx.WithValue(pkg_constants.ContextResourceName, result.name)
 	diagnostics := diagnostics.NewModuleDiagnostics(result.name)
 	result.diagnostics = &diagnostics
+
 	return result
 }
 
-func (p *FeatureRequestProcessor) SetConfig(config *template.IssueFormTemplate) {
+func (p *FeatureRequestProcessor) Register() error {
+	depTree := dependencytree.Get[interfaces.Executor](&FeatureRequestProcessor{})
+	if depTree == nil {
+		errorMsg := "Error getting dependency tree"
+		p.ctx.LogError(errorMsg)
+		return errors.New(errorMsg)
+	}
+	treeItem, err := depTree.AddItem(p.id, p.name, pkg_constants.GitHubProvisionerID, p)
+	if err != nil {
+		errorMsg := fmt.Sprintf("Error adding %v to dependency tree, err: %v", p.name, err.Error())
+		p.ctx.LogError(errorMsg)
+		return errors.New(errorMsg)
+	}
+
+	if err := treeItem.DependsOn(pkg_constants.GitHubIssueTemplateConfigProcessorID); err != nil {
+		errorMsg := fmt.Sprintf("Error adding dependency to item %v in dependency tree, err: %v", p.name, err.Error())
+		p.ctx.LogError(errorMsg)
+		return errors.New(errorMsg)
+	}
+
+	p.dependencyTreeItem = treeItem
+	p.depTree = depTree
+
+	return nil
+}
+
+func (p *FeatureRequestProcessor) SetConfig(config *templates.IssueFormTemplate) {
 	p.featureRequestConfig = config
 }
 
@@ -59,7 +92,7 @@ func (p *FeatureRequestProcessor) ID() string {
 	return p.id
 }
 
-func (p *FeatureRequestProcessor) Process() diagnostics.Diagnostics {
+func (p *FeatureRequestProcessor) Run() diagnostics.Diagnostics {
 	issueTemplateFolderPath := path.Join(p.config.WorkingDirectory, constants.GithubFolder, constants.IssueTemplateFolder)
 	if !helper.FileExists(issueTemplateFolderPath) {
 		err := os.Mkdir(issueTemplateFolderPath, 0o755)
@@ -89,7 +122,7 @@ func (p *FeatureRequestProcessor) Process() diagnostics.Diagnostics {
 
 	filePath := path.Join(issueTemplateFolderPath, potentialFileNames[0])
 	if writeDiag := helpers.WriteTemplateToFile(filePath,
-		template.DefaultFormTemplate,
+		templates.DefaultFormTemplate,
 		p.featureRequestConfig); writeDiag.HasErrors() {
 		p.diagnostics.Append(writeDiag)
 		return *p.diagnostics
@@ -98,8 +131,8 @@ func (p *FeatureRequestProcessor) Process() diagnostics.Diagnostics {
 	return *p.diagnostics
 }
 
-func (p *FeatureRequestProcessor) generateDefault() *template.IssueFormTemplate {
-	defaultConfig := template.NewIssueTemplate("Feature Request")
+func (p *FeatureRequestProcessor) generateDefault() *templates.IssueFormTemplate {
+	defaultConfig := templates.NewIssueTemplate("Feature Request")
 	defaultConfig.Labels = append(defaultConfig.Labels, "triage", "feature request")
 	defaultConfig.Description = "Suggest an idea for this project"
 	featureDescriptionItem := form.NewTextAreaItem("feature_description")
@@ -124,4 +157,8 @@ func (p *FeatureRequestProcessor) generateDefault() *template.IssueFormTemplate 
 	defaultConfig.Body.Items = append(defaultConfig.Body.Items, additionalContextItem)
 
 	return defaultConfig
+}
+
+func (p FeatureRequestProcessor) ReshuffleCallback() func() {
+	return nil
 }

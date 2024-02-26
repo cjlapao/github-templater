@@ -100,6 +100,10 @@ func (c *Config) Load() bool {
 	return true
 }
 
+func (c *Config) IsDebug() bool {
+	return c.ctx.Logger().LogLevel == log.Debug
+}
+
 func (c *Config) LogLevel() string {
 	logLevel := c.GetKey(constants.EnvLogLevel)
 	if logLevel != "" {
